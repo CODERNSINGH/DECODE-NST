@@ -28,6 +28,7 @@ import { motion } from 'framer-motion';
 import { analyzeIssue, getActivityStatus } from '@/lib/issue-analytics';
 import AssigneeGraph from '@/components/AssigneeGraph';
 import UserCard from '@/components/UserCard';
+import AiAnalyzing from '@/components/AiAnalyzing';
 
 export default function IssueDetail() {
   const { owner, repo, number } = useParams();
@@ -68,7 +69,7 @@ export default function IssueDetail() {
     enabled: !!owner && !!repo,
   });
 
-  const { data: analysis } = useQuery({
+  const { data: analysis, isFetching: isAnalyzing } = useQuery({
     queryKey: ['issue-analysis-detail', issue?.id],
     queryFn: async () => {
       if (!issue || issue.state === 'closed') return null;
@@ -168,6 +169,11 @@ export default function IssueDetail() {
                 <div className="flex gap-4">
                   <Brain className={`h-6 w-6 flex-shrink-0 mt-1 ${isStale ? 'text-destructive' : 'text-primary'}`} />
                   <div className="flex-1">
+                      {isAnalyzing && (
+                        <div className="mb-2">
+                          <AiAnalyzing />
+                        </div>
+                      )}
                     <h3 className="font-semibold text-lg mb-2 flex items-center gap-2">
                       {isStale ? '⚠️ Stale Issue Detected' : '🧠 AI Analysis'}
                     </h3>

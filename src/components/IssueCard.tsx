@@ -13,6 +13,7 @@ import { analyzeIssue } from '@/lib/issue-analytics';
 import { githubAPI } from '@/lib/github-api';
 import AssigneeGraph from './AssigneeGraph';
 import UserCard from './UserCard';
+import AiAnalyzing from './AiAnalyzing';
 
 interface IssueCardProps {
   issue: GitHubIssue;
@@ -61,7 +62,7 @@ export const IssueCard = ({ issue, repoOwner, repoName, index }: IssueCardProps)
     return null;
   }, [issueTimeline, issue.assignee]);
 
-  const { data: analysis } = useQuery({
+  const { data: analysis, isFetching: isAnalyzing } = useQuery({
     queryKey: ['issue-analysis', issue.id, userActivity?.login],
     queryFn: async () => {
       if (!issue.assignee || issue.state === 'closed' || !userActivity) return null;
@@ -156,6 +157,11 @@ export const IssueCard = ({ issue, repoOwner, repoName, index }: IssueCardProps)
 
               {issue.assignee && (
                 <div className="space-y-2 pt-2">
+                  {isAnalyzing && (
+                    <div className="mb-2">
+                      <AiAnalyzing small />
+                    </div>
+                  )}
                   <UserCard
                     username={issue.assignee.login}
                     owner={repoOwner}
