@@ -91,8 +91,8 @@ export default function Contributors() {
       case 'reliability':
         return b.reliabilityScore - a.reliabilityScore;
       case 'activity':
-        const activityOrder = { high: 3, medium: 2, low: 1 };
-        return activityOrder[b.activityPattern] - activityOrder[a.activityPattern];
+        { const activityOrder = { high: 3, medium: 2, low: 1 };
+        return activityOrder[b.activityPattern] - activityOrder[a.activityPattern]; }
       case 'contributions':
       default:
         return b.totalPRs - a.totalPRs;
