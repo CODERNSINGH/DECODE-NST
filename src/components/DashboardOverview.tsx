@@ -341,35 +341,35 @@ export const DashboardOverview = ({ repoOwner, repoName }: DashboardOverviewProp
             
             <div className="space-y-3">
               {dashboardStats.topContributors.map((contributor, index) => (
-                <div key={contributor.login} className="flex items-center justify-between p-3 bg-accent/50 rounded-lg">
+                <div key={contributor.login} className="flex items-center justify-between p-3 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-2xl border border-white/6 shadow-sm">
                   <div className="flex items-center gap-3">
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-medium text-muted-foreground">#{index + 1}</span>
                       <img 
                         src={contributor.avatar_url} 
                         alt={contributor.login}
-                        className="h-8 w-8 rounded-full"
+                        className="h-10 w-10 rounded-full"
                       />
                     </div>
                     <div>
-                      <p className="font-medium">{contributor.login}</p>
+                      <p className="font-semibold">{contributor.login}</p>
                       <p className="text-sm text-muted-foreground">
                         {contributor.totalPRs} PRs • {contributor.mergedPRs} merged
                       </p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Badge 
-                      variant="outline" 
-                      className={contributor.activityPattern === 'high' ? 'border-success text-success' : 
-                                contributor.activityPattern === 'medium' ? 'border-warning text-warning' : 
-                                'border-muted text-muted'}
-                    >
-                      {contributor.activityPattern}
-                    </Badge>
-                    <span className="text-sm font-medium">
-                      {contributor.reliabilityScore}%
-                    </span>
+                  <div className="flex items-center gap-4">
+                    <div className="text-right">
+                      <div className="text-xs text-muted-foreground">Reliability</div>
+                      <div className="font-semibold text-lg">{contributor.reliabilityScore}%</div>
+                    </div>
+                    <div className="w-36">
+                      <div className="mt-1">
+                        <div className="w-full bg-[rgba(0,0,0,0.04)] h-3 rounded-full overflow-hidden">
+                          <div className={`h-3 ${contributor.reliabilityScore > 70 ? 'bg-success' : contributor.reliabilityScore > 40 ? 'bg-warning' : 'bg-destructive'}`} style={{ width: `${contributor.reliabilityScore}%` }} />
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
               ))}

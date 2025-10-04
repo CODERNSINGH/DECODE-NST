@@ -732,6 +732,15 @@ class GitHubAPI {
     return response.data;
   }
 
+  async getIssueComments(owner: string, repo: string, issueNumber: number): Promise<any[]> {
+    const response = await axios.get(
+      `${GITHUB_API_BASE}/repos/${owner}/${repo}/issues/${issueNumber}/comments`,
+      { headers: this.getHeaders() }
+    );
+    this.updateRateLimit(response.headers);
+    return response.data;
+  }
+
   async getContributors(owner: string, repo: string): Promise<GitHubContributor[]> {
     const response = await axios.get(
       `${GITHUB_API_BASE}/repos/${owner}/${repo}/contributors?per_page=100`,

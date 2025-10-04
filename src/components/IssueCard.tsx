@@ -1,3 +1,4 @@
+import React from 'react';
 import { GitHubIssue, UserActivityData } from '@/lib/github-api';
 import { Badge } from './ui/badge';
 import { Card } from './ui/card';
@@ -10,6 +11,8 @@ import { getActivityStatus, getCompletionColor, getActivityBadgeColor } from '@/
 import { useQuery } from '@tanstack/react-query';
 import { analyzeIssue } from '@/lib/issue-analytics';
 import { githubAPI } from '@/lib/github-api';
+import AssigneeGraph from './AssigneeGraph';
+import UserCard from './UserCard';
 
 interface IssueCardProps {
   issue: GitHubIssue;
@@ -31,6 +34,32 @@ export const IssueCard = ({ issue, repoOwner, repoName, index }: IssueCardProps)
     enabled: !!issue.assignee && issue.state === 'open',
     staleTime: 10 * 60 * 1000, // Cache for 10 minutes
   });
+
+  // Fetch timeline to detect assignment time for the current assignee
+  const { data: issueTimeline } = useQuery({
+    queryKey: ['issue-timeline-mini', repoOwner, repoName, issue.number],
+    queryFn: async () => {
+      try {
+        return await githubAPI.getIssueTimeline(repoOwner, repoName, issue.number);
+      } catch (e) {
+        return [];
+      }
+    },
+    enabled: !!repoOwner && !!repoName,
+    staleTime: 2 * 60 * 1000,
+  });
+
+  const assignedAt = React.useMemo(() => {
+    if (!issueTimeline || !issue.assignee) return null;
+    // Find the last 'assigned' event for this assignee
+    for (let i = issueTimeline.length - 1; i >= 0; i--) {
+      const ev = issueTimeline[i] as any;
+      if (ev.event === 'assigned' && ev.assignee?.login === issue.assignee.login) {
+        return ev.created_at;
+      }
+    }
+    return null;
+  }, [issueTimeline, issue.assignee]);
 
   const { data: analysis } = useQuery({
     queryKey: ['issue-analysis', issue.id, userActivity?.login],
@@ -110,14 +139,8 @@ export const IssueCard = ({ issue, repoOwner, repoName, index }: IssueCardProps)
               </h3>
 
               <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                <div className="flex items-center gap-1.5">
-                  <Avatar className="h-5 w-5">
-                    <AvatarImage src={issue.user.avatar_url} alt={issue.user.login} />
-                    <AvatarFallback>{issue.user.login[0]}</AvatarFallback>
-                  </Avatar>
-                  <span>{issue.user.login}</span>
-                </div>
-                
+                <UserCard username={issue.user.login} avatarUrl={issue.user.avatar_url} profileUrl={issue.user.html_url} compact />
+
                 <div className="flex items-center gap-1">
                   <Clock className="h-3.5 w-3.5" />
                   {formatDistanceToNow(new Date(issue.created_at), { addSuffix: true })}
@@ -133,80 +156,17 @@ export const IssueCard = ({ issue, repoOwner, repoName, index }: IssueCardProps)
 
               {issue.assignee && (
                 <div className="space-y-2 pt-2">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-muted-foreground">Assigned to:</span>
-                    <div className="flex items-center gap-1.5">
-                      <Avatar className="h-5 w-5 relative">
-                        <AvatarImage src={issue.assignee.avatar_url} alt={issue.assignee.login} />
-                        <AvatarFallback>{issue.assignee.login[0]}</AvatarFallback>
-                        {activityStatus && (
-                          <span 
-                            className={`absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-background ${
-                              activityStatus === 'active' ? 'bg-success' :
-                              activityStatus === 'away' ? 'bg-warning' :
-                              'bg-muted-foreground'
-                            }`}
-                          />
-                        )}
-                      </Avatar>
-                      <span className="text-sm font-medium">{issue.assignee.login}</span>
-                      <Badge variant="outline" className="text-xs">
-                        {activityStatus === 'active' ? '🟢 Active' :
-                         activityStatus === 'away' ? '🟡 Away' :
-                         '⚫ Offline'}
-                      </Badge>
-                    </div>
-                  </div>
-                  
-                  {userActivity && (
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2 text-xs">
-                        <Badge 
-                          variant="outline" 
-                          className={`text-xs ${getActivityBadgeColor(userActivity.activityPattern)}`}
-                        >
-                          <TrendingUp className="h-3 w-3 mr-1" />
-                          {userActivity.activityPattern} activity
-                        </Badge>
-                        <span className="text-muted-foreground">
-                          Reliability: <span className={`font-semibold ${
-                            userActivity.reliabilityScore > 70 ? 'text-success' :
-                            userActivity.reliabilityScore > 40 ? 'text-warning' :
-                            'text-destructive'
-                          }`}>{userActivity.reliabilityScore}%</span>
-                        </span>
-                      </div>
-                      
-                      {analysis && (
-                        <div className="flex items-center gap-3 text-xs">
-                          <div className="flex items-center gap-1">
-                            <Brain className="h-3 w-3 text-primary" />
-                            <span className="text-muted-foreground">
-                              AI Prediction: <span className={`font-semibold ${getCompletionColor(analysis.completionProbability)}`}>
-                                {analysis.completionProbability}%
-                              </span>
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <Clock className="h-3 w-3" />
-                            <span className="text-muted-foreground">
-                              ETA: {analysis.estimatedDays}d
-                            </span>
-                          </div>
-                          <Badge 
-                            variant={analysis.risk === 'low' ? 'outline' : 'secondary'}
-                            className={`text-xs ${
-                              analysis.risk === 'high' ? 'border-destructive text-destructive' :
-                              analysis.risk === 'medium' ? 'border-warning text-warning' :
-                              'border-success text-success'
-                            }`}
-                          >
-                            {analysis.risk === 'high' ? '⚠️' : analysis.risk === 'medium' ? '⚡' : '✓'} {analysis.risk} risk
-                          </Badge>
-                        </div>
-                      )}
-                    </div>
-                  )}
+                  <UserCard
+                    username={issue.assignee.login}
+                    owner={repoOwner}
+                    repo={repoName}
+                    avatarUrl={issue.assignee.avatar_url}
+                    profileUrl={issue.assignee.html_url}
+                    userActivity={userActivity}
+                    analysis={analysis}
+                    compact
+                    assignedAt={assignedAt}
+                  />
                 </div>
               )}
             </div>

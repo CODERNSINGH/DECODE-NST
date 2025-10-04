@@ -20,7 +20,9 @@ export default function Issues() {
   
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'open' | 'closed'>('all');
-  const [sortBy, setSortBy] = useState<'updated' | 'created' | 'comments'>('updated');
+  const [sortBy, setSortBy] = useState<'updated' | 'created' | 'comments' | 'most-active'>('updated');
+  const [sortByAssigned, setSortByAssigned] = useState(false);
+  const [sortByActive, setSortByActive] = useState(false);
   
   const parseRepo = (repo: string | null) => {
     if (!repo) return null;
@@ -34,13 +36,73 @@ export default function Issues() {
     queryKey: ['issues', repo?.owner, repo?.name, statusFilter, sortBy],
     queryFn: async () => {
       if (!repo) return [];
+      // only pass GitHub-supported sort values
+      const apiSort = sortBy === 'created' || sortBy === 'comments' || sortBy === 'updated' ? sortBy : 'updated';
       return await githubAPI.getIssues(repo.owner, repo.name, {
         state: statusFilter,
-        sort: sortBy,
+        sort: apiSort,
         per_page: 50,
       });
     },
     enabled: !!repo,
+  });
+
+  // When sorting by assigned, we need to fetch timelines for open issues to compute assigned time
+  const { data: issuesWithAssigned } = useQuery({
+    queryKey: ['issues-assigned-times', repo?.owner, repo?.name, issues, sortByAssigned],
+    queryFn: async () => {
+      if (!issues || !sortByAssigned) return issues || [];
+
+      const results = await Promise.all(
+        issues.map(async (issue: GitHubIssue) => {
+          try {
+            const timeline = await githubAPI.getIssueTimeline(repo!.owner, repo!.name, issue.number);
+            // find the most recent 'assigned' event for current assignee
+            let assignedAt: string | null = null;
+            if (issue.assignee) {
+              for (let i = timeline.length - 1; i >= 0; i--) {
+                const ev = timeline[i] as any;
+                if (ev.event === 'assigned' && ev.assignee?.login === issue.assignee.login) {
+                  assignedAt = ev.created_at;
+                  break;
+                }
+              }
+            }
+            return { ...issue, assignedAt };
+          } catch (e) {
+            return { ...issue, assignedAt: null };
+          }
+        })
+      );
+
+      return results;
+    },
+    enabled: !!issues && !!repo,
+    staleTime: 30 * 1000,
+  });
+
+  // When sorting by most active, fetch assignee activity for each issue (cached)
+  const { data: issuesWithAssigneeActivity } = useQuery({
+    queryKey: ['issues-assignee-activity', repo?.owner, repo?.name, issues, sortByActive],
+    queryFn: async () => {
+      if (!issues || !sortByActive) return issues || [];
+
+      const results = await Promise.all(
+        issues.map(async (issue: GitHubIssue) => {
+          if (!issue.assignee) return { ...issue, assigneeActivity: null };
+          try {
+            const activity = await githubAPI.getUserActivity(repo!.owner, repo!.name, issue.assignee.login);
+            return { ...issue, assigneeActivity: activity };
+          } catch (e) {
+            return { ...issue, assigneeActivity: null };
+          }
+        })
+      );
+
+      return results;
+    },
+    enabled: !!issues && !!repo,
+    staleTime: 30 * 1000,
   });
 
   const { data: repoData } = useQuery({
@@ -99,6 +161,22 @@ export default function Issues() {
     );
   });
 
+  // If sorting by assigned, order by how long it's been assigned (longest first)
+  const finalIssues = sortByAssigned && issuesWithAssigned
+    ? [...issuesWithAssigned].sort((a: any, b: any) => {
+      const aTime = a.assignedAt ? new Date(a.assignedAt).getTime() : 0;
+      const bTime = b.assignedAt ? new Date(b.assignedAt).getTime() : 0;
+      // earlier assignedAt -> smaller timestamp -> should come first (longer assigned)
+      return aTime - bTime;
+    })
+    : sortByActive && issuesWithAssigneeActivity
+    ? [...issuesWithAssigneeActivity].sort((a: any, b: any) => {
+      const aScore = a.assigneeActivity ? a.assigneeActivity.reliabilityScore : 0;
+      const bScore = b.assigneeActivity ? b.assigneeActivity.reliabilityScore : 0;
+      return bScore - aScore; // higher reliability (more active) first
+    })
+    : filteredIssues;
+
   const staleIssues = issues?.filter((issue) => githubAPI.isStaleIssue(issue)) || [];
   const openIssues = issues?.filter((issue) => issue.state === 'open') || [];
   const closedIssues = issues?.filter((issue) => issue.state === 'closed') || [];
@@ -152,6 +230,26 @@ export default function Issues() {
               <span className="text-muted-foreground">stale issues</span>
             </div>
           </div>
+          {sortByActive && issuesWithAssigneeActivity && (
+            <div className="mt-4 p-4 rounded-lg bg-gradient-to-r from-amber-50 to-pink-50 border border-white/6 flex items-center gap-4">
+              <div className="font-semibold">Top Active Assignees</div>
+              <div className="flex gap-3 overflow-auto">
+                {issuesWithAssigneeActivity.slice(0, 6).map((it: any, idx: number) => {
+                  const a = it.assigneeActivity;
+                  if (!a) return null;
+                  return (
+                    <div key={idx} className="flex items-center gap-2 bg-white/20 rounded-lg px-3 py-1">
+                      <img src={a.avatar_url} className="h-6 w-6 rounded-full" />
+                      <div className="text-sm">
+                        <div className="font-medium">{a.login}</div>
+                        <div className="text-xs text-muted-foreground">{a.reliabilityScore}%</div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </motion.div>
       )}
 
@@ -219,7 +317,21 @@ export default function Issues() {
                 </SelectContent>
               </Select>
 
-              <Select value={sortBy} onValueChange={(v: any) => setSortBy(v)}>
+              <Select value={sortBy} onValueChange={(v: any) => {
+                if (v === 'assigned') {
+                  setSortByAssigned(true);
+                  setSortByActive(false);
+                  setSortBy('updated');
+                } else if (v === 'most-active') {
+                  setSortByActive(true);
+                  setSortByAssigned(false);
+                  setSortBy('updated');
+                } else {
+                  setSortByAssigned(false);
+                  setSortByActive(false);
+                  setSortBy(v);
+                }
+              }}>
                 <SelectTrigger className="w-full sm:w-[180px]">
                   <SelectValue />
                 </SelectTrigger>
@@ -227,6 +339,8 @@ export default function Issues() {
                   <SelectItem value="updated">Recently Updated</SelectItem>
                   <SelectItem value="created">Newest</SelectItem>
                   <SelectItem value="comments">Most Commented</SelectItem>
+                  <SelectItem value="assigned">Assigned (longest)</SelectItem>
+                  <SelectItem value="most-active">Most Active</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -237,9 +351,9 @@ export default function Issues() {
             <div className="flex items-center justify-center py-20">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
-          ) : filteredIssues && filteredIssues.length > 0 ? (
+          ) : finalIssues && finalIssues.length > 0 ? (
             <div className="space-y-4">
-              {filteredIssues.map((issue, index) => (
+              {finalIssues.map((issue: any, index: number) => (
                 <IssueCard
                   key={issue.id}
                   issue={issue}

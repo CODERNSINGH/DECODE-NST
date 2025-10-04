@@ -26,6 +26,8 @@ import {
 import { format, formatDistanceToNow } from 'date-fns';
 import { motion } from 'framer-motion';
 import { analyzeIssue, getActivityStatus } from '@/lib/issue-analytics';
+import AssigneeGraph from '@/components/AssigneeGraph';
+import UserCard from '@/components/UserCard';
 
 export default function IssueDetail() {
   const { owner, repo, number } = useParams();
@@ -48,11 +50,43 @@ export default function IssueDetail() {
     enabled: !!owner && !!repo && !!number,
   });
 
+  const { data: comments } = useQuery({
+    queryKey: ['issue-comments', owner, repo, number],
+    queryFn: async () => {
+      if (!owner || !repo || !number) return [];
+      return await githubAPI.getIssueComments(owner, repo, parseInt(number));
+    },
+    enabled: !!owner && !!repo && !!number,
+  });
+
+  const { data: repoData } = useQuery({
+    queryKey: ['repo-data', owner, repo],
+    queryFn: async () => {
+      if (!owner || !repo) return null;
+      return await githubAPI.getRepository(owner, repo);
+    },
+    enabled: !!owner && !!repo,
+  });
+
   const { data: analysis } = useQuery({
     queryKey: ['issue-analysis-detail', issue?.id],
     queryFn: async () => {
-      if (!issue?.assignee || issue.state === 'closed') return null;
-      return await analyzeIssue(issue, { contributions: 0 }, { avgTimeToClose: 7, openIssues: 10 });
+      if (!issue || issue.state === 'closed') return null;
+
+      // fetch assignee activity if available
+      let assigneeActivity = null;
+      if (issue.assignee && owner && repo) {
+        try {
+          assigneeActivity = await githubAPI.getUserActivity(owner, repo, issue.assignee.login);
+        } catch (e) {
+          console.warn('Failed to fetch assignee activity', e);
+          assigneeActivity = null;
+        }
+      }
+
+      const repoStats = repoData || { avgTimeToClose: 7, openIssues: issue ? issue.comments : 0 };
+
+      return await analyzeIssue(issue, assigneeActivity as any, repoStats);
     },
     enabled: !!issue?.assignee && issue?.state === 'open',
     staleTime: 5 * 60 * 1000,
@@ -229,6 +263,30 @@ export default function IssueDetail() {
                 <Timeline events={timeline} />
               </Card>
             )}
+
+            {/* Commenters */}
+            {comments && comments.length > 0 && (
+              <Card className="p-6">
+                <h3 className="font-semibold mb-4">Commenters</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {comments.map((c: any) => {
+                    const snippet = c.body ? (c.body.length > 200 ? c.body.slice(0, 197) + '...' : c.body) : null;
+                    return (
+                      <UserCard
+                        key={c.id}
+                        username={c.user.login}
+                        avatarUrl={c.user.avatar_url}
+                        profileUrl={c.user.html_url}
+                        owner={owner || undefined}
+                        repo={repo || undefined}
+                        compact
+                        commentText={snippet}
+                      />
+                    );
+                  })}
+                </div>
+              </Card>
+            )}
           </div>
 
           {/* Sidebar */}
@@ -294,6 +352,21 @@ export default function IssueDetail() {
 
               <Separator />
 
+              {/* Assignee success graph */}
+              {issue.assignee && (
+                <div>
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
+                    <Activity className="h-4 w-4" />
+                    <span>Assignee performance</span>
+                  </div>
+                  <AssigneeGraph
+                    successRate={analysis ? (analysis.completionProbability ?? 0) : 50}
+                    completionProbability={analysis ? analysis.completionProbability : undefined}
+                  />
+                </div>
+              )}
+
+              <Separator />
               {/* PR Status */}
               <div>
                 <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
