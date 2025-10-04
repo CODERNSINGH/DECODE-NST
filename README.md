@@ -1,208 +1,243 @@
-# 🍪 Cookie-Licking Detector
+# 🍪 GIT BUDDY - Cookie-Licking Detector  
+### _Stop cookie-licking. Start real collaboration._  
 
-A sophisticated GitHub issue management platform that helps open-source maintainers detect and manage "cookie-licking" - the practice of claiming issues but never delivering on them.
+A sophisticated, AI-powered GitHub issue management platform that helps open-source maintainers detect and manage **“cookie-licking”** — the act of claiming issues but never delivering on them.  
 
-## 🚀 Features
+---
 
-### 🔍 **Smart Issue Detection**
-- **Real-time GitHub API Integration**: Fetches live data from GitHub repositories
-- **AI-Powered Analysis**: Uses Google Gemini AI to predict issue completion probability
-- **Stale Issue Detection**: Automatically identifies issues that are assigned but show no progress
-- **Risk Assessment**: Categorizes issues as low, medium, or high risk based on multiple factors
+## 🧩 Problem Statement
 
-### 👥 **Advanced Contributor Analytics**
-- **Activity Pattern Analysis**: Tracks contributor behavior patterns (high/medium/low activity)
-- **Reliability Scoring**: Calculates contributor reliability based on PR merge rates and completion times
-- **Real-time Status**: Shows if contributors are currently active, away, or offline
-- **Performance Metrics**: Tracks average time to close, total PRs, merged PRs, and open issues
+In open source, contributors often comment “I’ll work on this” but never follow through. This leads to:
+- Frustrated newcomers who see issues as “taken”
+- Maintainers blocked by inactive claims
+- Reduced project velocity and collaboration quality
 
-### 📊 **Comprehensive Dashboard**
-- **Real-time Monitoring**: Live updates of repository health and issue progress
-- **Visual Analytics**: Progress bars, charts, and metrics for easy understanding
-- **AI Insights**: Smart recommendations based on repository patterns
-- **Top Contributors**: Highlights most reliable and active contributors
+**GIT BUDDY** solves this by automatically detecting, analyzing, and resolving these stale issue claims — empowering maintainers to manage their repositories more efficiently.  
 
-### 🔔 **Intelligent Notifications**
-- **Smart Alerts**: Notifications for stale issues, low activity contributors, and high-risk situations
-- **Priority System**: Critical, warning, and info level notifications
-- **Actionable Insights**: Direct links to issues and contributor profiles
-- **Dismissible Alerts**: Easy management of notification preferences
+---
 
-### 🎯 **Enhanced User Experience**
-- **Modern UI**: Beautiful, responsive design with smooth animations
-- **Real-time Updates**: Auto-refreshing data every 5 minutes
-- **Search & Filter**: Advanced filtering by status, activity level, and reliability
-- **Tabbed Interface**: Organized view with Dashboard and Issues tabs
+## 🚀 Quick Start Guide
+
+### Option 1: Fix npm and Install Dependencies
+```bash
+cd "/Users/ranajeetroy/Desktop/Decode Hackthon/stale-spotter"
+sudo chown -R $(whoami) ~/.npm
+npm cache clean --force
+npm install
+npm run dev
+````
+
+### Option 2: Use the Setup Script
+
+```bash
+cd "/Users/ranajeetroy/Desktop/Decode Hackthon/stale-spotter"
+./start-dev.sh
+```
+
+### Option 3: Manual Installation
+
+```bash
+rm -f package-lock.json
+rm -rf node_modules
+npm install --legacy-peer-deps --no-optional --force
+# or
+yarn install
+npm run dev
+```
+
+Once running, open your browser at **[http://localhost:5173](http://localhost:5173)**
+
+---
+
+## 🎯 What You'll See
+
+### 🏠 **Home Page**
+
+* Animated cookie hero section 🍪
+* Repository search bar
+* Feature showcase with icons and smooth transitions
+
+### 📊 **Dashboard**
+
+* Real-time repository health metrics
+* Stale issue rate progress bar
+* AI insights and recommendations
+* Top contributors panel
+
+### 📋 **Issues Tab**
+
+* AI-powered issue completion prediction
+* Risk assessment badges
+* Contributor activity visualization
+
+### 👥 **Contributors Page**
+
+* Detailed contributor analytics
+* Reliability scores
+* Performance metrics and live activity
+
+### 🔔 **Smart Notifications**
+
+* Alerts for stale issues or low activity
+* Success notifications for reliable contributors
+* Dismissible alert system
+
+---
+
+## 🎨 Key Features
+
+### 🤖 **AI-Powered Analysis**
+
+* **Gemini AI Integration** – Smart issue predictions
+* **Completion Probability** – 0–100% likelihood
+* **Risk Assessment** – Low / Medium / High
+* **Smart Recommendations** – Maintain repository health
+
+### ⏱️ **Real-time Monitoring**
+
+* Auto-refresh every 5 minutes
+* Detects inactive issues
+* Tracks contributor behavior
+
+### 💻 **Beautiful UI**
+
+* Built with **React + Tailwind + Framer Motion**
+* Fully responsive and modern
+* Dark/Light theme support
+
+---
 
 ## 🛠️ Technology Stack
 
-- **Frontend**: React 18 + TypeScript + Vite
-- **UI Framework**: Tailwind CSS + shadcn/ui components
-- **Animations**: Framer Motion
-- **State Management**: TanStack Query (React Query)
-- **API Integration**: GitHub REST API + Google Gemini AI
-- **Icons**: Lucide React
-- **Charts**: Recharts
+| Category             | Tools / Frameworks                       |
+| -------------------- | ---------------------------------------- |
+| **Frontend**         | React 18 + TypeScript + Vite             |
+| **UI**               | Tailwind CSS + shadcn/ui + Framer Motion |
+| **State Management** | TanStack Query (React Query)             |
+| **API Integration**  | GitHub REST API + Google Gemini AI       |
+| **Visualization**    | Recharts + Lucide Icons                  |
 
-## 🚀 Getting Started
-
-### Prerequisites
-- Node.js 18+ 
-- npm or yarn
-- GitHub repository access
-
-### Installation
-
-1. **Clone the repository**
-   ```bash
-   git clone <repository-url>
-   cd stale-spotter
-   ```
-
-2. **Install dependencies**
-   ```bash
-   npm install
-   # or
-   yarn install
-   ```
-
-3. **Start the development server**
-   ```bash
-   npm run dev
-   # or
-   yarn dev
-   ```
-
-4. **Open your browser**
-   Navigate to `http://localhost:5173`
-
-## 📖 Usage
-
-### 1. **Repository Analysis**
-- Enter a GitHub repository URL or `owner/repo` format
-- The system will fetch and analyze all issues and contributors
-- View real-time dashboard with key metrics
-
-### 2. **Issue Management**
-- Browse issues with AI-powered completion predictions
-- Filter by status, assignee, or activity level
-- View detailed issue timelines and contributor activity
-
-### 3. **Contributor Insights**
-- Analyze contributor reliability and activity patterns
-- Identify top performers and potential bottlenecks
-- Track contributor engagement over time
-
-### 4. **Smart Notifications**
-- Receive alerts for stale issues and low activity contributors
-- Get AI-powered recommendations for issue management
-- Take action directly from notification cards
+---
 
 ## 🔧 Configuration
 
 ### GitHub API
-The application uses GitHub's REST API. For higher rate limits, you can:
-1. Add a GitHub Personal Access Token
-2. Update the API headers in `src/lib/github-api.ts`
 
-### Gemini AI Integration
-The AI analysis uses Google's Gemini API:
-- API Key is configured in `src/lib/github-api.ts`
-- Customize prompts for different analysis types
-- Fallback analysis available if AI is unavailable
+To increase rate limits:
+
+1. Create a **GitHub Personal Access Token**
+2. Add it to your environment variables
+3. Update headers in `src/lib/github-api.ts`
+
+### Gemini AI
+
+* API Key configured in `src/lib/github-api.ts`
+* Customizable prompts for various analysis types
+* Fallback system if AI is unavailable
+
+---
+
+## 🧭 Usage
+
+1. **Search Repository** → Enter `owner/repo` or full URL
+2. **View Dashboard** → See live analytics
+3. **Browse Issues** → AI-based risk & completion insights
+4. **Check Contributors** → View reliability and patterns
+5. **Manage Notifications** → Respond to stale activity
+
+---
 
 ## 📊 Key Metrics
 
-### Issue Analysis
-- **Completion Probability**: AI-predicted likelihood of issue completion (0-100%)
-- **Estimated Days**: Predicted time to completion
-- **Risk Level**: Low/Medium/High based on multiple factors
-- **Staleness**: Days since last activity
+### **Issue Analysis**
 
-### Contributor Metrics
-- **Reliability Score**: Based on PR merge rate and completion time
-- **Activity Pattern**: High/Medium/Low based on recent activity
-- **Performance**: Average time to close, total contributions
-- **Status**: Active/Away/Offline based on recent activity
+* Completion probability (0–100%)
+* Estimated completion days
+* Risk level (Low / Medium / High)
+* Days since last activity
 
-## 🎨 UI Components
+### **Contributor Metrics**
 
-### Issue Cards
-- Status badges with color coding
-- AI prediction indicators
-- Contributor activity status
-- Risk assessment badges
+* Reliability score
+* Activity pattern (High / Medium / Low)
+* Average PR merge time
+* Real-time status (Active / Away / Offline)
 
-### Contributor Cards
-- Activity status indicators
-- Reliability scores
-- Performance metrics
-- Activity pattern badges
-
-### Dashboard
-- Real-time metrics
-- Progress indicators
-- AI insights panel
-- Top contributors list
+---
 
 ## 🔮 AI Features
 
-### Issue Analysis
-The AI analyzes multiple factors:
-- Issue complexity and labels
-- Assignee's historical performance
-- Recent activity patterns
-- Repository-specific patterns
+### **AI Predictions Include**
 
-### Predictions Include:
-- Completion probability percentage
-- Estimated completion time
-- Risk assessment
-- Actionable recommendations
+* Completion probability
+* Estimated completion time
+* Risk assessment
+* Actionable recommendations
 
-## 🚨 Stale Issue Detection
+### **Stale Issue Detection**
 
-### Criteria for Stale Issues:
-- Assigned to a contributor
-- No linked pull request
-- No activity for configurable days (default: 7)
-- Open status
+| Category     | Condition                      |
+| ------------ | ------------------------------ |
+| **Critical** | 14+ days inactive              |
+| **Warning**  | 7–13 days inactive             |
+| **Info**     | Recently assigned, no progress |
 
-### Stale Issue Categories:
-- **Critical**: 14+ days stale
-- **Warning**: 7-13 days stale
-- **Info**: Recently assigned but no activity
+---
 
-## 📈 Performance
+## ⚙️ Troubleshooting
 
-- **Real-time Updates**: Data refreshes every 5 minutes
-- **Caching**: Intelligent caching for better performance
-- **Error Handling**: Graceful fallbacks for API failures
-- **Responsive Design**: Works on all device sizes
+### npm Permission Issues
+
+```bash
+sudo chown -R $(whoami) ~/.npm
+npm config set cache ~/.npm-cache
+```
+
+### Dependencies Error
+
+```bash
+npm install --legacy-peer-deps
+npm install --force
+```
+
+### Port in Use
+
+```bash
+lsof -ti:5173 | xargs kill -9
+npm run dev -- --port 3000
+```
+
+---
 
 ## 🤝 Contributing
 
 1. Fork the repository
 2. Create a feature branch
 3. Make your changes
-4. Add tests if applicable
-5. Submit a pull request
-
-## 📄 License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-## 🙏 Acknowledgments
-
-- GitHub API for repository data
-- Google Gemini for AI analysis
-- shadcn/ui for beautiful components
-- The open-source community for inspiration
+4. Add tests (if applicable)
+5. Open a Pull Request
 
 ---
 
-**Built with ❤️ for the open-source community**
+## 📄 License
 
-*Stop cookie-licking. Start real collaboration.* 🍪# Decode-Hackathon
-# Hackathon-Decode
-# DECODE-NST
+This project is licensed under the **MIT License**.
+See the LICENSE file for details.
+
+---
+
+## 🙏 Acknowledgments
+
+* **GitHub API** for data integration
+* **Google Gemini** for AI analysis
+* **shadcn/ui** for clean design components
+* The **open-source community** for inspiration
+
+---
+
+**Built with ❤️ at Decode Hackathon**
+
+> Empowering maintainers to detect stale issues and promote real collaboration in open source.
+> 🍪✨
+
+---
