@@ -131,17 +131,17 @@ export default function Home() {
               </div>
               <p className="text-sm text-muted-foreground">
                 Try: <button
-                  onClick={() => setRepoInput('facebook/react')}
+                  onClick={() => setRepoInput('apache/airflow-site')}
                   className="text-primary hover:underline font-medium"
                 >
-                  facebook/react
+                  apache/airflow-site
                 </button>
                 {' or '}
                 <button
-                  onClick={() => setRepoInput('microsoft/vscode')}
+                  onClick={() => setRepoInput('asyncapi/website')}
                   className="text-primary hover:underline font-medium"
                 >
-                  microsoft/vscode
+                  asyncapi/website
                 </button>
               </p>
             </div>

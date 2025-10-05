@@ -24,7 +24,7 @@ export const Navbar = () => {
         <Link to="/" className="flex items-center gap-2 font-bold text-xl hover:opacity-80 transition-opacity">
           <Cookie className="h-6 w-6 text-secondary" />
           <span className="bg-gradient-primary bg-clip-text text-transparent">
-            Cookie-Licking Detector
+            GIT BUDDY
           </span>
         </Link>
 
