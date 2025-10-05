@@ -5,14 +5,12 @@ import { motion } from 'framer-motion';
 
 export const Navbar = () => {
   const location = useLocation();
-  
-  const isActive = (path: string) => location.pathname === path;
-  
+
+  const isActive = (path) => location.pathname === path;
+
   const navItems = [
     { path: '/', label: 'Home' },
     { path: '/issues', label: 'Issues' },
-    { path: '/contributors', label: 'Contributors' },
-    { path: '/analytics', label: 'Analytics' },
   ];
 
   return (
@@ -21,7 +19,8 @@ export const Navbar = () => {
       animate={{ y: 0, opacity: 1 }}
       className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60"
     >
-      <nav className="container mx-auto flex h-16 items-center justify-between px-4">
+      <nav className="container mx-auto flex h-16 items-center px-4 relative">
+        {/* Logo on the Left */}
         <Link to="/" className="flex items-center gap-2 font-bold text-xl hover:opacity-80 transition-opacity">
           <Cookie className="h-6 w-6 text-secondary" />
           <span className="bg-gradient-primary bg-clip-text text-transparent">
@@ -29,7 +28,8 @@ export const Navbar = () => {
           </span>
         </Link>
 
-        <div className="hidden md:flex items-center gap-6">
+        {/* Centered Nav Links */}
+        <div className="absolute left-1/2 transform -translate-x-1/2 flex items-center gap-6">
           {navItems.map((item) => (
             <Link
               key={item.path}
@@ -48,18 +48,6 @@ export const Navbar = () => {
             </Link>
           ))}
         </div>
-
-        <Button variant="outline" size="sm" asChild>
-          <a
-            href="https://github.com"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="gap-2"
-          >
-            <Github className="h-4 w-4" />
-            <span className="hidden sm:inline">GitHub</span>
-          </a>
-        </Button>
       </nav>
     </motion.header>
   );
