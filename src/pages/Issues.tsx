@@ -15,7 +15,7 @@ import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 
 export default function Issues() {
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
   const repoParam = searchParams.get('repo');
   
   const [searchTerm, setSearchTerm] = useState('');
@@ -24,20 +24,18 @@ export default function Issues() {
   const [sortByAssigned, setSortByAssigned] = useState(false);
   const [sortByActive, setSortByActive] = useState(false);
   
-  const parseRepo = (repo: string | null) => {
-    if (!repo) return null;
-    const [owner, name] = repo.split('/');
+  // Parse repo from URL params
+  const repo = repoParam ? (() => {
+    const [owner, name] = repoParam.split('/');
     return owner && name ? { owner, name } : null;
-  };
+  })() : null;
 
-  const repo = parseRepo(repoParam);
-
+  // Fetch issues with basic sorting
   const { data: issues, isLoading, error } = useQuery({
     queryKey: ['issues', repo?.owner, repo?.name, statusFilter, sortBy],
     queryFn: async () => {
       if (!repo) return [];
-      // only pass GitHub-supported sort values
-      const apiSort = sortBy === 'created' || sortBy === 'comments' || sortBy === 'updated' ? sortBy : 'updated';
+      const apiSort = ['created', 'comments', 'updated'].includes(sortBy) ? sortBy : 'updated';
       return await githubAPI.getIssues(repo.owner, repo.name, {
         state: statusFilter,
         sort: apiSort,
@@ -47,7 +45,7 @@ export default function Issues() {
     enabled: !!repo,
   });
 
-  // When sorting by assigned, we need to fetch timelines for open issues to compute assigned time
+  // Get assignment times for sorting by longest assigned
   const { data: issuesWithAssigned } = useQuery({
     queryKey: ['issues-assigned-times', repo?.owner, repo?.name, issues, sortByAssigned],
     queryFn: async () => {
@@ -57,9 +55,10 @@ export default function Issues() {
         issues.map(async (issue: GitHubIssue) => {
           try {
             const timeline = await githubAPI.getIssueTimeline(repo!.owner, repo!.name, issue.number);
-            // find the most recent 'assigned' event for current assignee
             let assignedAt: string | null = null;
+            
             if (issue.assignee) {
+              // Find most recent assignment for current assignee
               for (let i = timeline.length - 1; i >= 0; i--) {
                 const ev = timeline[i] as any;
                 if (ev.event === 'assigned' && ev.assignee?.login === issue.assignee.login) {
@@ -78,10 +77,10 @@ export default function Issues() {
       return results;
     },
     enabled: !!issues && !!repo,
-    staleTime: 30 * 1000,
+    staleTime: 30000,
   });
 
-  // When sorting by most active, fetch assignee activity for each issue (cached)
+  // Get assignee activity for sorting by most active
   const { data: issuesWithAssigneeActivity } = useQuery({
     queryKey: ['issues-assignee-activity', repo?.owner, repo?.name, issues, sortByActive],
     queryFn: async () => {
@@ -90,6 +89,7 @@ export default function Issues() {
       const results = await Promise.all(
         issues.map(async (issue: GitHubIssue) => {
           if (!issue.assignee) return { ...issue, assigneeActivity: null };
+          
           try {
             const activity = await githubAPI.getUserActivity(repo!.owner, repo!.name, issue.assignee.login);
             return { ...issue, assigneeActivity: activity };
@@ -102,24 +102,18 @@ export default function Issues() {
       return results;
     },
     enabled: !!issues && !!repo,
-    staleTime: 30 * 1000,
+    staleTime: 30000,
   });
 
   const { data: repoData } = useQuery({
     queryKey: ['repository', repo?.owner, repo?.name],
-    queryFn: async () => {
-      if (!repo) return null;
-      return await githubAPI.getRepository(repo.owner, repo.name);
-    },
+    queryFn: () => repo ? githubAPI.getRepository(repo.owner, repo.name) : null,
     enabled: !!repo,
   });
 
   const { data: contributors } = useQuery({
     queryKey: ['contributors', repo?.owner, repo?.name],
-    queryFn: async () => {
-      if (!repo) return [];
-      return await githubAPI.getContributors(repo.owner, repo.name);
-    },
+    queryFn: () => repo ? githubAPI.getContributors(repo.owner, repo.name) : [],
     enabled: !!repo,
   });
 
@@ -128,12 +122,13 @@ export default function Issues() {
     queryFn: async () => {
       if (!contributors || !repo) return [];
       
+      const top10 = contributors.slice(0, 10);
       const activityData = await Promise.all(
-        contributors.slice(0, 10).map(async (contributor) => {
+        top10.map(async (contributor) => {
           try {
             return await githubAPI.getUserActivity(repo.owner, repo.name, contributor.login);
-          } catch (error) {
-            console.error(`Failed to fetch activity for ${contributor.login}:`, error);
+          } catch (err) {
+            console.error(`Failed to fetch activity for ${contributor.login}:`, err);
             return null;
           }
         })
@@ -142,7 +137,7 @@ export default function Issues() {
       return activityData.filter(Boolean);
     },
     enabled: !!contributors && !!repo,
-    staleTime: 10 * 60 * 1000,
+    staleTime: 600000, // 10 min
   });
 
   useEffect(() => {
@@ -151,6 +146,7 @@ export default function Issues() {
     }
   }, [error]);
 
+  // Apply search filter
   const filteredIssues = issues?.filter((issue) => {
     if (!searchTerm) return true;
     const term = searchTerm.toLowerCase();
@@ -161,25 +157,41 @@ export default function Issues() {
     );
   });
 
-  // If sorting by assigned, order by how long it's been assigned (longest first)
-  const finalIssues = sortByAssigned && issuesWithAssigned
-    ? [...issuesWithAssigned].sort((a: any, b: any) => {
+  // Apply custom sorting
+  let finalIssues = filteredIssues;
+  
+  if (sortByAssigned && issuesWithAssigned) {
+    finalIssues = [...issuesWithAssigned].sort((a: any, b: any) => {
       const aTime = a.assignedAt ? new Date(a.assignedAt).getTime() : 0;
       const bTime = b.assignedAt ? new Date(b.assignedAt).getTime() : 0;
-      // earlier assignedAt -> smaller timestamp -> should come first (longer assigned)
       return aTime - bTime;
-    })
-    : sortByActive && issuesWithAssigneeActivity
-    ? [...issuesWithAssigneeActivity].sort((a: any, b: any) => {
-      const aScore = a.assigneeActivity ? a.assigneeActivity.reliabilityScore : 0;
-      const bScore = b.assigneeActivity ? b.assigneeActivity.reliabilityScore : 0;
-      return bScore - aScore; // higher reliability (more active) first
-    })
-    : filteredIssues;
+    });
+  } else if (sortByActive && issuesWithAssigneeActivity) {
+    finalIssues = [...issuesWithAssigneeActivity].sort((a: any, b: any) => {
+      const aScore = a.assigneeActivity?.reliabilityScore || 0;
+      const bScore = b.assigneeActivity?.reliabilityScore || 0;
+      return bScore - aScore;
+    });
+  }
 
   const staleIssues = issues?.filter((issue) => githubAPI.isStaleIssue(issue)) || [];
   const openIssues = issues?.filter((issue) => issue.state === 'open') || [];
-  const closedIssues = issues?.filter((issue) => issue.state === 'closed') || [];
+
+  const handleSortChange = (value: string) => {
+    if (value === 'assigned') {
+      setSortByAssigned(true);
+      setSortByActive(false);
+      setSortBy('updated');
+    } else if (value === 'most-active') {
+      setSortByActive(true);
+      setSortByAssigned(false);
+      setSortBy('updated');
+    } else {
+      setSortByAssigned(false);
+      setSortByActive(false);
+      setSortBy(value as any);
+    }
+  };
 
   if (!repo) {
     return (
@@ -188,9 +200,7 @@ export default function Issues() {
           <AlertCircle className="h-16 w-16 mx-auto text-muted-foreground" />
           <h2 className="text-2xl font-bold">No Repository Selected</h2>
           <p className="text-muted-foreground">Please search for a repository from the home page</p>
-          <Button onClick={() => window.location.href = '/'}>
-            Go to Home
-          </Button>
+          <Button onClick={() => window.location.href = '/'}>Go to Home</Button>
         </div>
       </div>
     );
@@ -230,6 +240,7 @@ export default function Issues() {
               <span className="text-muted-foreground">stale issues</span>
             </div>
           </div>
+
           {sortByActive && issuesWithAssigneeActivity && (
             <div className="mt-4 p-4 rounded-lg bg-gradient-to-r from-amber-50 to-pink-50 border border-white/6 flex items-center gap-4">
               <div className="font-semibold">Top Active Assignees</div>
@@ -239,7 +250,7 @@ export default function Issues() {
                   if (!a) return null;
                   return (
                     <div key={idx} className="flex items-center gap-2 bg-white/20 rounded-lg px-3 py-1">
-                      <img src={a.avatar_url} className="h-6 w-6 rounded-full" />
+                      <img src={a.avatar_url} className="h-6 w-6 rounded-full" alt={a.login} />
                       <div className="text-sm">
                         <div className="font-medium">{a.login}</div>
                         <div className="text-xs text-muted-foreground">{a.reliabilityScore}%</div>
@@ -253,7 +264,6 @@ export default function Issues() {
         </motion.div>
       )}
 
-      {/* Notification System */}
       {contributorsWithActivity && (
         <NotificationSystem 
           staleIssues={staleIssues}
@@ -263,14 +273,12 @@ export default function Issues() {
         />
       )}
 
-      {/* Stale Issues Alert */}
       <StaleIssuesAlert 
         issues={staleIssues} 
         repoOwner={repo.owner} 
         repoName={repo.name} 
       />
 
-      {/* Tabs for Dashboard and Issues */}
       <Tabs defaultValue="dashboard" className="space-y-6">
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="dashboard" className="gap-2">
@@ -288,7 +296,6 @@ export default function Issues() {
         </TabsContent>
 
         <TabsContent value="issues">
-          {/* Filters */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -317,21 +324,7 @@ export default function Issues() {
                 </SelectContent>
               </Select>
 
-              <Select value={sortBy} onValueChange={(v: any) => {
-                if (v === 'assigned') {
-                  setSortByAssigned(true);
-                  setSortByActive(false);
-                  setSortBy('updated');
-                } else if (v === 'most-active') {
-                  setSortByActive(true);
-                  setSortByAssigned(false);
-                  setSortBy('updated');
-                } else {
-                  setSortByAssigned(false);
-                  setSortByActive(false);
-                  setSortBy(v);
-                }
-              }}>
+              <Select value={sortBy} onValueChange={handleSortChange}>
                 <SelectTrigger className="w-full sm:w-[180px]">
                   <SelectValue />
                 </SelectTrigger>
@@ -346,7 +339,6 @@ export default function Issues() {
             </div>
           </motion.div>
 
-          {/* Issues List */}
           {isLoading ? (
             <div className="flex items-center justify-center py-20">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
